@@ -46,6 +46,7 @@ jspm_packages/
 
 #Frontend files
 public/
+.env
 
 # TypeScript v1 declaration files
 typings/
