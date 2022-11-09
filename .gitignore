@@ -44,6 +44,9 @@ jspm_packages/
 #WebStorm stuff
 .idea/
 
+#Frontend files
+public/
+
 # TypeScript v1 declaration files
 typings/
 
