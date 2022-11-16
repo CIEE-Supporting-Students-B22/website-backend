@@ -12,7 +12,7 @@ const db = client.db("CIEESupport")
 app.use(express.json());
 
 app.get('/pageTypes', (req, res) => {
-    //Essentially the 4 buttons on the homepage
+    //Essentially the buttons on the homepage
     let pages = db.collection("Pages").find({}).toArray().then( arr => res.send(arr))
 })
 
@@ -23,6 +23,15 @@ app.post('/getPosts', (req,res) => {
 app.post('/removePost', (req,res) => {
     db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)}).then(res.sendStatus(200))
 })
+
+app.post('/addPost', (req,res) => {
+    db.collection("Posts").insertOne(req.body).then(res.sendStatus(200));
+})
+
+app.post('/getPost', (req,res) => {
+    db.collection("Posts").findOne({"_id": ObjectId(req.body._id)}).then( data => res.send(data));
+})
+
 
 
 app.listen(port, () => {
