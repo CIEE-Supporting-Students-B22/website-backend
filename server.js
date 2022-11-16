@@ -16,8 +16,14 @@ app.get('/pageTypes', (req, res) => {
     let pages = db.collection("Pages").find({}).toArray().then( arr => res.send(arr))
 })
 
+//Get all posts, NO LONG DESCRIPTION
 app.post('/getPosts', (req,res) => {
-    db.collection("Posts").find({"postType": req.body.postType}).toArray().then(arr => res.send(arr));
+    db.collection("Posts").find({"postType": req.body.postType}, {description:0}).toArray().then(arr => res.send(arr));
+})
+
+//Get a single post with its long description
+app.post('/getPost', (req,res) => {
+    db.collection("Posts").findOne({"_id": ObjectId(req.body._id)}).then( data => res.send(data));
 })
 
 app.post('/removePost', (req,res) => {
@@ -25,11 +31,10 @@ app.post('/removePost', (req,res) => {
 })
 
 app.post('/addPost', (req,res) => {
-    db.collection("Posts").insertOne(req.body).then(res.sendStatus(200));
-})
-
-app.post('/getPost', (req,res) => {
-    db.collection("Posts").findOne({"_id": ObjectId(req.body._id)}).then( data => res.send(data));
+    db.collection("Posts").insertOne(req.body)
+        .then(mongoResponse => {
+            if (mongoResponse.acknowledged) res.send({"_id": mongoResponse.insertedId.toString()})
+        });
 })
 
 
