@@ -1,6 +1,8 @@
 const express = require('express'),
     app = express(),
     env = require('dotenv').config(),
+    glob = require('glob'),
+    fileUpload = require('express-fileupload'),
     { MongoClient, ServerApiVersion, ObjectId} = require('mongodb'),
     port = 2000;
 
@@ -10,6 +12,8 @@ client.connect();
 const db = client.db("CIEESupport")
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
 
 app.get('/pageTypes', (req, res) => {
     //Essentially the buttons on the homepage
@@ -31,10 +35,32 @@ app.post('/removePost', (req,res) => {
 })
 
 app.post('/addPost', (req,res) => {
+    console.log(req.body);
     db.collection("Posts").insertOne(req.body)
         .then(mongoResponse => {
-            if (mongoResponse.acknowledged) res.send({"_id": mongoResponse.insertedId.toString()})
+            if (mongoResponse.acknowledged) {
+                if (req.files) {
+                    let filename = req.files.postImage.name;
+                    req.files.postImage.mv('user_uploads/'+mongoResponse.insertedId.toString()+filename.substring(filename.indexOf('.')), (error) => {
+                        if (error) console.log(error)
+                    });
+                }
+                res.send({"_id": mongoResponse.insertedId.toString()})
+            }
         });
+})
+
+app.get('/getImage', (req,res) => {
+    console.log(req.query);
+    let filename = req.query._id;
+    console.log(filename);
+    glob('user_uploads/'+filename+'.*', (err, files) => {
+        if (err) console.log(err);
+        if (files) {
+            console.log(files);
+            res.sendFile(__dirname+'/'+files[0]);
+        }
+    })
 })
 
 
