@@ -59,15 +59,20 @@ app.post('/editPost', (req,res) => {
         .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
 })
 
-app.get('/getImage', (req,res) => {
+app.get('/getImages', (req,res) => {
     let filename = req.query._id;
     glob('user_uploads/'+filename+'.*', (err, files) => {
         if (err) console.log(err);
         if (files) {
-            console.log(files);
-            res.sendFile(__dirname+'/'+files[0]);
+            let listOfPaths = []
+            files.forEach(imageName => listOfPaths.push(imageName))
+            res.send(listOfPaths)
         }
     })
+})
+
+app.get('/getImage', (req,res) => {
+    res.sendFile(__dirname+'/'+req.query.pathname)
 })
 
 
