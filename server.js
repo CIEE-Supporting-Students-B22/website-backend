@@ -34,26 +34,33 @@ app.post('/removePost', (req,res) => {
     db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)}).then(res.sendStatus(200))
 })
 
+function handlePostUpdate(mongoResponse, req, res) {
+    if (mongoResponse.acknowledged) {
+        if (req.files) {
+            let filename = req.files.postImage.name;
+            console.log(mongoResponse);
+            req.files.postImage.mv('user_uploads/' + (mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id.toString()) + filename.substring(filename.indexOf('.')), (error) => {
+                if (error) console.log(error)
+            });
+        }
+        res.send({"_id": mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id})
+    }
+}
+
 app.post('/addPost', (req,res) => {
-    console.log(req.body);
     db.collection("Posts").insertOne(req.body)
-        .then(mongoResponse => {
-            if (mongoResponse.acknowledged) {
-                if (req.files) {
-                    let filename = req.files.postImage.name;
-                    req.files.postImage.mv('user_uploads/'+mongoResponse.insertedId.toString()+filename.substring(filename.indexOf('.')), (error) => {
-                        if (error) console.log(error)
-                    });
-                }
-                res.send({"_id": mongoResponse.insertedId.toString()})
-            }
-        });
+        .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
+})
+
+app.post('/editPost', (req,res) => {
+    let newPost = req.body;
+    newPost._id = ObjectId(req.body._id);
+    db.collection("Posts").replaceOne({"_id": ObjectId(req.body._id)}, newPost)
+        .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
 })
 
 app.get('/getImage', (req,res) => {
-    console.log(req.query);
     let filename = req.query._id;
-    console.log(filename);
     glob('user_uploads/'+filename+'.*', (err, files) => {
         if (err) console.log(err);
         if (files) {
