@@ -1,5 +1,6 @@
 const express = require('express'),
     app = express(),
+    fs = require('fs'),
     env = require('dotenv').config(),
     glob = require('glob'),
     fileUpload = require('express-fileupload'),
@@ -37,11 +38,31 @@ app.post('/removePost', (req,res) => {
 function handlePostUpdate(mongoResponse, req, res) {
     if (mongoResponse.acknowledged) {
         if (req.files) {
-            let filename = req.files.postImage.name;
-            console.log(mongoResponse);
-            req.files.postImage.mv('user_uploads/' + (mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id.toString()) + filename.substring(filename.indexOf('.')), (error) => {
-                if (error) console.log(error)
-            });
+            let listOfFiles = req.files.postImage;
+            if (req.files.postImage.length === undefined) listOfFiles = [listOfFiles];
+            let deletePromise = new Promise( (resolve, reject) => {
+                if (!req.body._id) resolve();
+                else {
+                    glob('user_uploads/'+req.body._id.toString()+'-*.*', (err, files) => {
+                        if (err) console.log(err);
+                        for (let item of files) {
+                            fs.unlinkSync(item);
+                            console.log('deleted '+item);
+                        }
+                        resolve();
+                    })
+                }
+            })
+            deletePromise.then( () => {
+                console.log('handling new files');
+                for (let i=0;i<listOfFiles.length;i++) {
+                    console.log(i+1+' images added')
+                    let filename = listOfFiles[i].name;
+                    listOfFiles[i].mv('user_uploads/' + (mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id.toString()) +'-'+i + filename.substring(filename.indexOf('.')), (error) => {
+                        if (error) console.log(error)
+                    });
+                }
+            })
         }
         res.send({"_id": mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id})
     }
@@ -61,7 +82,7 @@ app.post('/editPost', (req,res) => {
 
 app.get('/getImages', (req,res) => {
     let filename = req.query._id;
-    glob('user_uploads/'+filename+'.*', (err, files) => {
+    glob('user_uploads/'+filename+'-*.*', (err, files) => {
         if (err) console.log(err);
         if (files) {
             let listOfPaths = []
