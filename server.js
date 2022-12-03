@@ -32,39 +32,40 @@ app.post('/getPost', (req,res) => {
 })
 
 app.post('/removePost', (req,res) => {
-    db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)}).then(res.sendStatus(200))
+    db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)})
+        .then(deleteImages(req.body._id))
+        .then(res.sendStatus(200))
 })
+
+function deleteImages(postID) {
+    return new Promise( (resolve, reject) => {
+        glob('user_uploads/'+postID+'-*.*', (err, files) => {
+            if (err) reject();
+            for (let item of files) {
+                fs.unlinkSync(item);
+                console.log('deleted ' + item);
+            }
+            resolve();
+        })
+    })
+}
 
 function handlePostUpdate(mongoResponse, req, res) {
     if (mongoResponse.acknowledged) {
+        let postID = (mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id.toString())
         if (req.files) {
             let listOfFiles = req.files.postImage;
             if (req.files.postImage.length === undefined) listOfFiles = [listOfFiles];
-            let deletePromise = new Promise( (resolve, reject) => {
-                if (!req.body._id) resolve();
-                else {
-                    glob('user_uploads/'+req.body._id.toString()+'-*.*', (err, files) => {
-                        if (err) console.log(err);
-                        for (let item of files) {
-                            fs.unlinkSync(item);
-                            console.log('deleted '+item);
-                        }
-                        resolve();
-                    })
-                }
-            })
-            deletePromise.then( () => {
-                console.log('handling new files');
+            deleteImages(postID).then( () => {
                 for (let i=0;i<listOfFiles.length;i++) {
-                    console.log(i+1+' images added')
                     let filename = listOfFiles[i].name;
-                    listOfFiles[i].mv('user_uploads/' + (mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id.toString()) +'-'+i + filename.substring(filename.indexOf('.')), (error) => {
+                    listOfFiles[i].mv('user_uploads/' + postID +'-'+i + filename.substring(filename.indexOf('.')), (error) => {
                         if (error) console.log(error)
                     });
                 }
             })
         }
-        res.send({"_id": mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id})
+        res.send({"_id": postID})
     }
 }
 
