@@ -1,5 +1,6 @@
 const express = require('express'),
     app = express(),
+    fs = require('fs'),
     env = require('dotenv').config(),
     glob = require('glob'),
     fileUpload = require('express-fileupload'),
@@ -31,36 +32,69 @@ app.post('/getPost', (req,res) => {
 })
 
 app.post('/removePost', (req,res) => {
-    db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)}).then(res.sendStatus(200))
+    db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)})
+        .then(deleteImages(req.body._id))
+        .then(res.sendStatus(200))
 })
 
-app.post('/addPost', (req,res) => {
-    console.log(req.body);
-    db.collection("Posts").insertOne(req.body)
-        .then(mongoResponse => {
-            if (mongoResponse.acknowledged) {
-                if (req.files) {
-                    let filename = req.files.postImage.name;
-                    req.files.postImage.mv('user_uploads/'+mongoResponse.insertedId.toString()+filename.substring(filename.indexOf('.')), (error) => {
+function deleteImages(postID) {
+    return new Promise( (resolve, reject) => {
+        glob('user_uploads/'+postID+'-*.*', (err, files) => {
+            if (err) reject();
+            for (let item of files) {
+                fs.unlinkSync(item);
+                console.log('deleted ' + item);
+            }
+            resolve();
+        })
+    })
+}
+
+function handlePostUpdate(mongoResponse, req, res) {
+    if (mongoResponse.acknowledged) {
+        let postID = (mongoResponse.insertedId ? mongoResponse.insertedId.toString() : req.body._id.toString())
+        if (req.files) {
+            let listOfFiles = req.files.postImage;
+            if (req.files.postImage.length === undefined) listOfFiles = [listOfFiles];
+            deleteImages(postID).then( () => {
+                for (let i=0;i<listOfFiles.length;i++) {
+                    let filename = listOfFiles[i].name;
+                    listOfFiles[i].mv('user_uploads/' + postID +'-'+i + filename.substring(filename.indexOf('.')), (error) => {
                         if (error) console.log(error)
                     });
                 }
-                res.send({"_id": mongoResponse.insertedId.toString()})
-            }
-        });
+            })
+        }
+        res.send({"_id": postID})
+    }
+}
+
+app.post('/addPost', (req,res) => {
+    db.collection("Posts").insertOne(req.body)
+        .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
+})
+
+app.post('/editPost', (req,res) => {
+    let newPost = req.body;
+    newPost._id = ObjectId(req.body._id);
+    db.collection("Posts").replaceOne({"_id": ObjectId(req.body._id)}, newPost)
+        .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
+})
+
+app.get('/getImages', (req,res) => {
+    let filename = req.query._id;
+    glob('user_uploads/'+filename+'-*.*', (err, files) => {
+        if (err) console.log(err);
+        if (files) {
+            let listOfPaths = []
+            files.forEach(imageName => listOfPaths.push(imageName))
+            res.send(listOfPaths)
+        }
+    })
 })
 
 app.get('/getImage', (req,res) => {
-    console.log(req.query);
-    let filename = req.query._id;
-    console.log(filename);
-    glob('user_uploads/'+filename+'.*', (err, files) => {
-        if (err) console.log(err);
-        if (files) {
-            console.log(files);
-            res.sendFile(__dirname+'/'+files[0]);
-        }
-    })
+    res.sendFile(__dirname+'/'+req.query.pathname)
 })
 
 
