@@ -1,5 +1,6 @@
 const express = require('express'),
     app = express(),
+    cookie = require('cookie-session'),
     fs = require('fs'),
     env = require('dotenv').config(),
     glob = require('glob'),
@@ -15,6 +16,16 @@ const db = client.db("CIEESupport")
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
+app.use(cookie({
+    name: 'session',
+    keys: ['temp1', 'temp2']
+}))
+
+//redirect
+app.use( (req,res,next) => {
+    if (!(req.originalUrl.includes('/admin')) || req.session.login === true) next();
+    else res.sendFile(__dirname+'/public/login.html');
+})
 
 app.get('/pageTypes', (req, res) => {
     //Essentially the buttons on the homepage
@@ -31,7 +42,7 @@ app.post('/getPost', (req,res) => {
     db.collection("Posts").findOne({"_id": ObjectId(req.body._id)}).then( data => res.send(data));
 })
 
-app.post('/removePost', (req,res) => {
+app.post('/adminRemovePost', (req,res) => {
     db.collection("Posts").deleteOne({"_id": ObjectId(req.body._id)})
         .then(deleteImages(req.body._id))
         .then(res.sendStatus(200))
@@ -69,12 +80,12 @@ function handlePostUpdate(mongoResponse, req, res) {
     }
 }
 
-app.post('/addPost', (req,res) => {
+app.post('/adminAddPost', (req,res) => {
     db.collection("Posts").insertOne(req.body)
         .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
 })
 
-app.post('/editPost', (req,res) => {
+app.post('/adminEditPost', (req,res) => {
     let newPost = req.body;
     newPost._id = ObjectId(req.body._id);
     db.collection("Posts").replaceOne({"_id": ObjectId(req.body._id)}, newPost)
@@ -97,6 +108,21 @@ app.get('/getImage', (req,res) => {
     res.sendFile(__dirname+'/'+req.query.pathname)
 })
 
+app.post('/login', (req,res) => {
+    if (req.body.username === 'admin' && req.body.password === 'admintest') {
+        req.session.login = true;
+        res.redirect('/adminTest');
+    }
+    else res.sendFile(__dirname+'/public/login.html');
+})
+
+//IF YOU CANT MAKE CHANGES GO TO http://localhost:2000/adminTest and LOGIN WITH:
+//Username: admin
+//Password: admintest
+//then all editing and admin features should work
+app.get('/adminTest', (req,res) => {
+    res.send('Logged in');
+})
 
 
 app.listen(port, () => {
