@@ -80,6 +80,13 @@ function handlePostUpdate(mongoResponse, req, res) {
     }
 }
 
+app.post('/adminRemoveImage', (req,res) => {
+    console.log(req.body.path);
+    fs.unlinkSync(req.body.path);
+    console.log('removed: ',req.body.path)
+    res.send(204);
+})
+
 app.post('/adminAddPost', (req,res) => {
     db.collection("Posts").insertOne(req.body)
         .then((mongoResponse) => handlePostUpdate(mongoResponse, req, res));
