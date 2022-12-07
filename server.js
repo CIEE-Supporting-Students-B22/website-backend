@@ -32,6 +32,14 @@ app.get('/pageTypes', (req, res) => {
     let pages = db.collection("Pages").find({}).toArray().then( arr => res.send(arr))
 })
 
+app.post('/adminAddPage', (req,res) => {
+    db.collection("Pages").insertOne(req.body).then(res.redirect('/admin-panel'));
+})
+
+app.post('/adminRemovePage', (req,res) => {
+    db.collection("Pages").deleteOne(req.body).then(res.sendStatus(200))
+})
+
 //Get all posts, NO LONG DESCRIPTION
 app.post('/getPosts', (req,res) => {
     db.collection("Posts").find({"postType": req.body.postType}, {description:0}).toArray().then(arr => res.send(arr));
