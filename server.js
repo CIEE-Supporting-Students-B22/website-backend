@@ -37,6 +37,7 @@ app.post('/adminAddPage', (req,res) => {
 })
 
 app.post('/adminRemovePage', (req,res) => {
+    console.log("removing ", req.body)
     db.collection("Pages").deleteOne(req.body).then(res.sendStatus(200))
 })
 
