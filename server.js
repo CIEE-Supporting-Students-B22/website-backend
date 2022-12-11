@@ -33,7 +33,11 @@ app.get('/pageTypes', (req, res) => {
 })
 
 app.post('/adminAddPage', (req,res) => {
-    db.collection("Pages").insertOne(req.body).then(res.redirect('/admin-panel'));
+    let newPage = req.body;
+    newPage.postType = req.body.title.toLowerCase().replaceAll(' ','-');
+    console.log(newPage);
+    console.log(req.body);
+    db.collection("Pages").insertOne(newPage).then(res.redirect('/admin-panel'));
 })
 
 app.post('/adminRemovePage', (req,res) => {
